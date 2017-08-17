@@ -20,7 +20,7 @@
 
    Author: Christian Evenhuis, christian.evenhuis@gmail.com
    Date:   August 2017
-
+*/
 
 // Update the macros, remember to:
 //    Help > Refresh Menus
