@@ -68,7 +68,7 @@ var slash=File.separator;  // Stupid windows!
 //id=getImageID()
 //threshold_image(id,-4.);
 
-//pcalibrate_cell_count_f();
+//calibrate_cell_count_f();
 //count_ND2_f();
 //process_directory();
 exit;
@@ -491,14 +491,49 @@ function calculate_RGB(id,n0,n1){
 // add the RGB info
 selectImage(id);
 
-cols=newArray("","Ch1","Ch2","Ch3","Ch4","Ch5");
-for(j=1;j<=5;j++){
+getDimensions(width, height, channels, slices, frames);
+
+
+
+Stack.setPosition(1,1,1);
+// Select all cells
+run("Select None");
+print(n1-n0);
+if( n1-n0>0){
+	for(i=0;i<n1-n0;i++){
+		setKeyDown("shift");
+		roiManager("select",i);
+	}
+	run("Make Inverse");
+}else{
+	run("Select All");
+}
+backgrounds=newArray(channels+1);
+for(j=1;j<=channels;j++){
+	Stack.setChannel(j);
+	getStatistics(area, mean, min, max, std, histogram);
+	nmax=pow(2,bitDepth());
+	if(nmax==256){
+		getHistogram(vals,counts,256);
+	}else{
+		getHistogram(vals,counts,256,0,nmax);
+	}
+	tmp=get_hist_mode_lhm_hhm(counts);
+	mode=vals[minOf(maxOf(tmp[0],0),255)]; 
+	backgrounds[j]=mode;
+	print("back ground Chan"+j+" "+mean);
+	//setBatchMode(false);
+	//exit;
+}
+
+for(j=1;j<=channels;j++){
 	Stack.setPosition(j,1,1);
-	col=cols[j];
+	col="Chan"+j;	
 	for(i=0;i<n1-n0;i++){
 		roiManager("select",i);
 		getStatistics(area,mean);
-		setResult(col,     n0+i,round(mean));
+		setResult(col,         n0+i,round(mean));
+		setResult(col+"_bgc",  n0+i,round(abs(mean-backgrounds[j])));
 	}
 }
 run("Select None");
