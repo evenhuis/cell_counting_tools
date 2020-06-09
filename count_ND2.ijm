@@ -27,7 +27,8 @@
 //str=exec("/Users/evenhuis/Dropbox/UTS/imageJ_macros/assemble_macros.sh");
 
 //- - - Global parameter with their defaults- - - - - - 
-var px2um=1;
+var file_ext='nd2';
+var px2um=NaN;
 var width_um, height_um;		// size of the image in um
 
 var process_chan=1;		// channel to process thresholds on
@@ -70,7 +71,7 @@ var slash=File.separator;  // Stupid windows!
 
 //calibrate_cell_count_f();
 //count_ND2_f();
-//process_directory();
+process_directory();
 exit;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -97,12 +98,17 @@ macro "process directory [D]" {
 function process_directory() {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 path 	=getDirectory("Select a directory");	// Name of file 
-look_for_previous_parameters(path);
+print(path);
+succ = look_for_previous_parameters(path);
 
 // get files in directory
-files=list_files_in_dir(path,"nd2");
+print("file ext",file_ext);
+files=list_files_in_dir(path,file_ext);
 for( i=0 ; i<files.length ; i++ ){
+		
 	file = files[i];
+	
+	print(file);
 	filepath=path+file;
 	count_file(filepath);
 }
@@ -312,6 +318,7 @@ filepath=File.openDialog("Select a File");	// Name of file
 path    =File.getParent(filepath);	     	// directory it is in
 file    =substring(filepath,lengthOf(path)+1);
 
+
 initial_setup(filepath);
 look_for_previous_parameters(path);
 get_user_parameters(" ");
@@ -389,6 +396,7 @@ while( repeat ){
 	loop++;
 }
 
+file_ext=get_ext(filepath);
 save_parameters(path);
 
 }// end calibrate
@@ -436,6 +444,7 @@ setResult("ex. size",    nr,nsize);
 setResult("ex. soft",    nr,nsoft);
 setResult("ex. edge",    nr,nedge);
 setResult("counted",     nr,ncount);
+print("depth "+depth);
 setResult("conc cell/mL",nr,d2s(dil_fac*ncount*1E-3     * 1E-3  /((width_um-2*size_max)*1E-6*(height_um-2*size_max)*1E-6*depth*1E-6),-4));
 								             // L->ml   m^3->L          W              um->M         H              um->  D mm-> M
 setResult("dilution",    nr,dil_fac);
@@ -456,8 +465,32 @@ Ext.getSeriesCount(seriesCount);
 // Get the meta data
 meta_str = get_meta_data( filepath );					// get the metadata string
 nseq      = parseInt  (extract_key_val("uiSequenceCount",meta_str)); 	// work out the number of images
+if(isNaN(nseq)){nseq=1;}
+print("nseq",nseq);
 nchan     = parseInt  (extract_key_val("SizeC",          meta_str)); 
 px2um     = parseFloat(extract_key_val("dCalibration",   meta_str));  	// Conversion factor from um to pixel
+
+if( isNaN(px2um)){
+	
+	path    =File.getParent(filepath);
+	look_for_previous_parameters( path );
+	print("after looking",px2um);
+	if( isNaN(px2um) ){
+		open_series( filepath, 1 );
+		setTool("line");
+		line_not_measured=true;
+		while( line_not_measured){
+			waitForUser("Draw a line along a grid edge");
+			getSelectionCoordinates(xpoints, ypoints);
+			if( xpoints.length==2){
+
+				dx2 = (xpoints[1]-xpoints[0])*(xpoints[1]-xpoints[0]);
+				dy2 = (ypoints[1]-ypoints[0])*(ypoints[1]-ypoints[0]);
+				px2um = 250./sqrt( dx2+dy2);
+			    line_not_measured=false;                  
+			}                       
+	}
+}
 width_um  = parseInt  (extract_key_val("SizeX",          meta_str))*px2um; 
 height_um = parseInt  (extract_key_val("SizeY",          meta_str))*px2um;
 
@@ -590,6 +623,10 @@ if( 0<=ns && ns<=nseq ){
 	bio_options="autoscale color_mode=Default concatenate_series  view=Hyperstack stack_order=XYCZT";
 	run("Bio-Formats Importer", "open=["+filepath+"] "+bio_options+"  specify_range series_"+ns);
 	setLocation(Im_x0, Im_y0, Im_w0, Im_h0);
+	run("Set Scale...", "distance=1. known="+px2um+" unit=micron");
+	getDimensions(width, height, channels, slices, frames);
+	width_um = width*px2um;
+	height_um = height*px2um;
 }else{
 	print("sequence out of range");
 	exit;
@@ -686,9 +723,9 @@ if( File.exists(param_file) ){
 	lines=split(str,"\n");
 	for( i=0; i<lines.length; i++ ){
 		args=split(lines[i],"= ");
+
 		//if( args[0]=="save_overlay"){ save_overlay=args[1]; }
-		
-		
+		if( args[0]=="file_ext"    ){ file_ext=    args[1] ; }
 		if( args[0]=="process_chan"){ process_chan=parseInt  (args[1]); }
 		if( args[0]=="size_min"    ){ size_min=    parseFloat(args[1]); }
 		if( args[0]=="size_max"    ){ size_max=    parseFloat(args[1]); }
@@ -699,11 +736,13 @@ if( File.exists(param_file) ){
 		if( args[0]=="Rhalf_max"   ){ Rhalf_max=   parseFloat(args[1]); }
 		
 		if( args[0]=="depth"   ){ depth=   parseFloat(args[1]); }
+		if( args[0]=="px2um"   ){ px2um=   parseFloat(args[1]); print("set px2um",px2um); }
 		//if( args[0]=="R2_min"      ){ R2_min=      args[1]; }
 	}
+	size_min=maxOf(size_min,sqrt(16/pi)*px2um);
 	loaded=true;
 }
-size_min=maxOf(size_min,sqrt(16/pi)*px2um);
+
 
 return( loaded);
 } // end look_for previous_parameters
@@ -716,6 +755,7 @@ function save_parameters(path){
 param_file = path+slash+"cell_count.param.txt";
 f=File.open(param_file);
 //print(f,"save_overlay= " +save_overlay);
+print(f,"file_ext= "+file_ext);
 print(f,"process_chan= "+process_chan);
 print(f,"thresh_upper= "+thresh_upper);
 print(f,"size_min= "    +size_min);
@@ -726,6 +766,7 @@ print(f,"watershed="    +watershed);
 //print(f,"use_fit= "     +use_fit);
 print(f,"Rhalf_max= "   +d2s(Rhalf_max,3));
 print(f,"depth= "       +d2s(depth,0));
+print(f,"px2um= "       +d2s(px2um,4));
 //print(f,"R2_min= "      +d2s(R2_min,3));
 File.close(f);
 
@@ -1187,6 +1228,18 @@ function trim_ext( string ){
 	}
 	return subs; 
 }
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+function get_ext( string ){
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	nd=lastIndexOf(string,".");
+
+	subs="";
+	if(nd >=0 ){
+		subs=substring(string,nd+1,lengthOf(string));
+	}
+	return subs; 
+}
+
 
 
 function erf(xi){

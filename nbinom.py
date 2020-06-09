@@ -18,8 +18,7 @@ def gamma_stdf_pdf( x, mu, std_mu ):
 
 def conv_ab_rp( alpha, beta):
     ''' over-dispersed poission
-     convolution of possion counts over a gamma dist 
-        int_mu=0^inf ( gamma(mu, alpha,beta)  poission(mu) dmu )
+
     converts the alpha,beta for the gamma dist to the 
     r,p for the negative bionomiali
     see https://www.johndcook.com/negative_binomial.pdf
