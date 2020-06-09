@@ -249,6 +249,10 @@ look_for_previous_parameters(path);
 dil_fac = get_dilution_factor_from_filename(file);
 
 
+cell2conc=1E-3     * 1E-3  /((width_um-2*size_max)*1E-6*(height_um-2*size_max)*1E-6*depth*1E-6);
+print("celAls to cell/mL ",cell2conc);
+
+
 
 // processing loop
 setBatchMode(true);
