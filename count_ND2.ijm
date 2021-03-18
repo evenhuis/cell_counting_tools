@@ -69,9 +69,9 @@ var slash=File.separator;  // Stupid windows!
 //id=getImageID()
 //threshold_image(id,-4.);
 
-//calibrate_cell_count_f();
+calibrate_cell_count_f();
 //count_ND2_f();
-process_directory();
+//process_directory();
 exit;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -225,7 +225,6 @@ function count_ND2_f(){
 // Get the ND2 file to open
 filepath=File.openDialog("Select a File");	// Name of file 
 count_file(filepath);
-
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -322,8 +321,9 @@ filepath=File.openDialog("Select a File");	// Name of file
 path    =File.getParent(filepath);	     	// directory it is in
 file    =substring(filepath,lengthOf(path)+1);
 
-
+print("Here");
 initial_setup(filepath);
+
 look_for_previous_parameters(path);
 get_user_parameters(" ");
 
@@ -470,12 +470,14 @@ Ext.getSeriesCount(seriesCount);
 meta_str = get_meta_data( filepath );					// get the metadata string
 nseq      = parseInt  (extract_key_val("uiSequenceCount",meta_str)); 	// work out the number of images
 if(isNaN(nseq)){nseq=1;}
-print("nseq",nseq);
+
 nchan     = parseInt  (extract_key_val("SizeC",          meta_str)); 
 px2um     = parseFloat(extract_key_val("dCalibration",   meta_str));  	// Conversion factor from um to pixel
 
+print("nchan",nchan);
+print("px2um",px2um,isNaN(px2um));
 if( isNaN(px2um)){
-	
+	print("in here");
 	path    =File.getParent(filepath);
 	look_for_previous_parameters( path );
 	print("after looking",px2um);
@@ -493,10 +495,13 @@ if( isNaN(px2um)){
 				px2um = 250./sqrt( dx2+dy2);
 			    line_not_measured=false;                  
 			}                       
+		}
 	}
 }
+
 width_um  = parseInt  (extract_key_val("SizeX",          meta_str))*px2um; 
 height_um = parseInt  (extract_key_val("SizeY",          meta_str))*px2um;
+
 
 size_max = minOf( width_um, height_um)*0.05;	// default max size (5% of image)
 depth = 100.;		// haemo depth
@@ -513,6 +518,8 @@ test_and_close("Summary");
 setResult("File_name",0," ");
 IJ.deleteRows(0, 0); 
 IJ.renameResults("Results","Counts");
+
+print("Results table setup");
 
 run("Clear Results"); 
 setResult("File_name",0," ");
